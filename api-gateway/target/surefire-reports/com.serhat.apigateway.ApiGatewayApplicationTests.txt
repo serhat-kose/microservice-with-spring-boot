@@ -1,4 +1,8 @@
 -------------------------------------------------------------------------------
 Test set: com.serhat.apigateway.ApiGatewayApplicationTests
 -------------------------------------------------------------------------------
-Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 4.465 s - in com.serhat.apigateway.ApiGatewayApplicationTests
+Tests run: 1, Failures: 0, Errors: 1, Skipped: 0, Time elapsed: 1.579 s <<< FAILURE! - in com.serhat.apigateway.ApiGatewayApplicationTests
+contextLoads  Time elapsed: 0 s  <<< ERROR!
+java.lang.NoClassDefFoundError: org/springframework/boot/Bootstrapper
+Caused by: java.lang.ClassNotFoundException: org.springframework.boot.Bootstrapper
+
