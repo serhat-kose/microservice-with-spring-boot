@@ -1,61 +1,59 @@
 package com.serhat.productservice.controller;
 
-import com.fasterxml.jackson.core.*;
-import com.fasterxml.jackson.databind.*;
-import com.serhat.productservice.entity.*;
-import com.serhat.productservice.repository.*;
-import org.springframework.beans.factory.annotation.*;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.serhat.productservice.entity.Product;
+import com.serhat.productservice.service.ProductService;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.*;
-import org.springframework.jms.core.*;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.*;
+import java.util.List;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/product")
+@RequiredArgsConstructor
 public class ProductController {
-    @Autowired
-    private ProductRepository productRepository;
-
-    @Autowired
-    private JmsTemplate jmsTemplate;
-
-    @Value("${product.jms.destination}")
-    private String jmsQueue;
+    private final ProductService productService;
 
     @PostMapping("/addOne")
-    public Product addProduct(@RequestBody Product product) {
-        return productRepository.save(product);
+    public ResponseEntity<Product> addProduct(@RequestBody Product product) {
+        try {
+            Product saved = productService.addProduct(product);
+            return new ResponseEntity<>(saved, HttpStatus.CREATED);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().build();
+        }
     }
 
     @PostMapping("/addList")
-    public List<Product> addProductList (@RequestBody  List<Product> products) {
-        return productRepository.saveAll(products);
+    public ResponseEntity<List<Product>> addProductList(@RequestBody List<Product> products) {
+        try {
+            List<Product> saved = productService.addProductList(products);
+            return new ResponseEntity<>(saved, HttpStatus.CREATED);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().build();
+        }
     }
 
     @GetMapping("/getAll")
-    public List<Product> getAllProduct () {
-        return productRepository.findAll();
+    public ResponseEntity<List<Product>> getAllProduct() {
+        List<Product> products = productService.getAllProducts();
+        return ResponseEntity.ok(products);
     }
 
     //Send a product to the message queue
     @GetMapping("/sendToCart/{id}")
-    public ResponseEntity<Product> sendToCart(@PathVariable long id) {
-        Optional<Product> product = productRepository.findById(id);
-        if(!product.isPresent()) {
-            return  new ResponseEntity<>(HttpStatus.NOT_FOUND);
-        }
+    public ResponseEntity<Product> sendToCart(@PathVariable Long id) {
         try {
-            ObjectMapper mapper = new ObjectMapper();
-            //Convert the object to String
-            String jsonInString = mapper.writeValueAsString(product.get());
-            //Send the data to the message queue
-            jmsTemplate.convertAndSend(jmsQueue,jsonInString);
-            return  new ResponseEntity<>(product.get(), HttpStatus.OK);
-
-        }catch (JsonProcessingException e){
+            Optional<Product> productOpt = productService.sendToCart(id);
+            if (productOpt.isEmpty()) {
+                return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+            }
+            return new ResponseEntity<>(productOpt.get(), HttpStatus.OK);
+        } catch (JsonProcessingException e) {
             e.printStackTrace();
-            return  new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
+            return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
 }
