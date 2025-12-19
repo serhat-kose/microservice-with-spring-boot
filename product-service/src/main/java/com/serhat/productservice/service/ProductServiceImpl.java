@@ -44,14 +44,24 @@ public class ProductServiceImpl implements ProductService {
     }
 
     @Override
-    public Optional<Product> sendToCart(Long id) throws JsonProcessingException {
+    public Optional<Product> sendToCart(Long id) {
         Optional<Product> productOpt = productRepository.findById(id);
         if (productOpt.isEmpty()) {
             return Optional.empty();
         }
-        String jsonInString = objectMapper.writeValueAsString(productOpt.get());
-        jmsTemplate.convertAndSend(jmsQueue, jsonInString);
-        return productOpt;
+        try {
+            String jsonInString = objectMapper.writeValueAsString(productOpt.get());
+            jmsTemplate.convertAndSend(jmsQueue, jsonInString);
+            return productOpt;
+        } catch (JsonProcessingException e) {
+            throw new ProductSerializationException("Failed to serialize product with id: " + id, e);
+        }
     }
 }
 
+class ProductSerializationException extends RuntimeException {
+
+    ProductSerializationException(String message, Throwable cause) {
+        super(message, cause);
+    }
+}
