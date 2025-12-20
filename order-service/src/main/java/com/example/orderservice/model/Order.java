@@ -22,7 +22,7 @@ public class Order {
     @Column(columnDefinition = "text")
     private String items;
 
-    private Double amount;
+
 
     @Column(nullable = false)
     private String status; // PENDING, RESERVED, PAID, SHIPPED, COMPLETED, FAILED
