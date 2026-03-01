@@ -1,8 +1,9 @@
 package com.example.orderservice.model;
 
 import jakarta.persistence.*;
-import lombok.*;
+import java.math.BigDecimal;
 import java.time.Instant;
+import lombok.*;
 
 @Entity
 @Table(name = "orders")
@@ -15,17 +16,15 @@ public class Order {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private String customerId;
+    private String userId;
 
-    // items JSON (ör: [{"productId":"p1","quantity":2}, ...])
     @Lob
     @Column(columnDefinition = "text")
-    private String items;
+    private String itemsJson; // JSON serialized list of items
 
+    private BigDecimal amount;
 
-
-    @Column(nullable = false)
-    private String status; // PENDING, RESERVED, PAID, SHIPPED, COMPLETED, FAILED
+    private String status; // CREATED, PROCESSING, COMPLETED, FAILED
 
     private Instant createdAt;
     private Instant updatedAt;
@@ -33,8 +32,7 @@ public class Order {
     @PrePersist
     public void prePersist() {
         if (this.createdAt == null) this.createdAt = Instant.now();
-        this.updatedAt = Instant.now();
-        if (this.status == null) this.status = "PENDING";
+        if (this.status == null) this.status = "CREATED";
     }
 
     @PreUpdate

@@ -1,0 +1,9 @@
+com\example\stockservice\controller\StockController$CreateStockRequest.class
+com\example\stockservice\controller\StockController$UpdateStockRequest.class
+com\example\stockservice\model\Stock$StockBuilder.class
+com\example\stockservice\repository\StockRepository.class
+com\example\stockservice\service\StockService.class
+com\example\stockservice\controller\StockController.class
+com\example\stockservice\model\Stock.class
+com\example\stockservice\StockServiceApplication.class
+com\example\stockservice\listener\StockListener.class
