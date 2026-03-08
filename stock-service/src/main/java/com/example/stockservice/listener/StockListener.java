@@ -37,7 +37,7 @@ public class StockListener {
             int qty = (int) ( (Number) it.get("quantity") ).intValue();
             Optional<Stock> sOpt = repo.findByProductId(productId);
             if (sOpt.isEmpty() || sOpt.get().getQuantity() < qty) {
-                String evt = mapper.writeValueAsString(Map.of("orderId", orderId, "reason", "insufficient_stock"));
+                String evt = mapper.writeValueAsString(Map.of("orderId", orderId, "reason", "insufficient_stock", "userId", m.get("userId")));
                 kafka.send("stock-reservation-failed", orderId, evt);
                 return;
             }
@@ -51,7 +51,7 @@ public class StockListener {
             s.setQuantity(s.getQuantity() - qty);
             repo.save(s);
         }
-        String evt = mapper.writeValueAsString(Map.of("orderId", orderId));
+        String evt = mapper.writeValueAsString(Map.of("orderId", orderId, "userId", m.get("userId"), "items", items, "amount", m.get("amount")));
         kafka.send("stock-reserved", orderId, evt);
     }
 
@@ -77,4 +77,3 @@ public class StockListener {
         }
     }
 }
-

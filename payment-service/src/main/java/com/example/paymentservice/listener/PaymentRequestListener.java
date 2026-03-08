@@ -24,9 +24,11 @@ public class PaymentRequestListener {
         String event = mapper.writeValueAsString(Map.of(
                 "orderId", orderId,
                 "paymentId", UUID.randomUUID().toString(),
-                "status", "SUCCESS"
+                "status", "SUCCESS",
+                "userId", m.get("userId"),
+                "items", m.get("items"),
+                "amount", m.get("amount")
         ));
         kafka.send("payment-result", orderId, event);
     }
 }
-

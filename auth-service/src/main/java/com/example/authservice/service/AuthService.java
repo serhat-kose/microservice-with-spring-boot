@@ -28,11 +28,14 @@ public class AuthService {
         UserEntity u = UserEntity.builder()
                 .username(req.getUsername())
                 .password(passwordEncoder.encode(req.getPassword()))
+                .firstName(req.getFirstName())
+                .lastName(req.getLastName())
+                .email(req.getEmail())
                 .build();
         userRepo.save(u);
         String access = jwtUtil.generateAccessToken(u.getUsername());
         String refresh = jwtUtil.generateRefreshToken(u.getUsername());
-        return new AuthResponse(access, refresh, "Bearer");
+        return new AuthResponse(access, refresh, "Bearer", u.getUsername(), u.getFirstName(), u.getLastName(), u.getEmail());
     }
 
     public AuthResponse login(LoginRequest req) {
@@ -43,7 +46,7 @@ public class AuthService {
         }
         String access = jwtUtil.generateAccessToken(u.getUsername());
         String refresh = jwtUtil.generateRefreshToken(u.getUsername());
-        return new AuthResponse(access, refresh, "Bearer");
+        return new AuthResponse(access, refresh, "Bearer", u.getUsername(), u.getFirstName(), u.getLastName(), u.getEmail());
     }
 
     public AuthResponse refresh(String refreshToken) {
@@ -53,7 +56,11 @@ public class AuthService {
         String username = jwtUtil.getUsernameFromToken(refreshToken);
         String access = jwtUtil.generateAccessToken(username);
         String refresh = jwtUtil.generateRefreshToken(username);
-        return new AuthResponse(access, refresh, "Bearer");
+        // load user profile to include in response
+        UserEntity u = userRepo.findByUsername(username).orElse(null);
+        if (u != null) {
+            return new AuthResponse(access, refresh, "Bearer", u.getUsername(), u.getFirstName(), u.getLastName(), u.getEmail());
+        }
+        return new AuthResponse(access, refresh, "Bearer", username, null, null, null);
     }
 }
-

@@ -28,8 +28,14 @@ public class Orchestrator {
     @KafkaListener(topics = "order-created", groupId = "saga-orchestrator")
     public void onOrderCreated(String message) throws Exception {
         Map<String, Object> m = objectMapper.readValue(message, Map.class);
-        String orderId = (String) m.get("orderId");
-        String reserveReq = objectMapper.writeValueAsString(Map.of("orderId", orderId, "items", m.get("items")));
+        String orderId = String.valueOf(m.get("orderId"));
+        // include userId and amount so stock service and subsequent steps have context
+        String reserveReq = objectMapper.writeValueAsString(Map.of(
+                "orderId", orderId,
+                "items", m.get("items"),
+                "userId", m.get("userId"),
+                "amount", m.get("amount")
+        ));
         kafkaTemplate.send("stock-reserve-request", orderId, reserveReq);
     }
 
@@ -37,8 +43,13 @@ public class Orchestrator {
     @KafkaListener(topics = "stock-reserved", groupId = "saga-orchestrator")
     public void onStockReserved(String message) throws Exception {
         Map<String, Object> m = objectMapper.readValue(message, Map.class);
-        String orderId = (String) m.get("orderId");
-        String paymentReq = objectMapper.writeValueAsString(Map.of("orderId", orderId, "amount", m.get("amount")));
+        String orderId = String.valueOf(m.get("orderId"));
+        String paymentReq = objectMapper.writeValueAsString(Map.of(
+                "orderId", orderId,
+                "amount", m.get("amount"),
+                "userId", m.get("userId"),
+                "items", m.get("items")
+        ));
         kafkaTemplate.send("payment-request", orderId, paymentReq);
     }
 
@@ -46,7 +57,7 @@ public class Orchestrator {
     @KafkaListener(topics = "stock-reservation-failed", groupId = "saga-orchestrator")
     public void onStockReservationFailed(String message) throws Exception {
         Map<String, Object> m = objectMapper.readValue(message, Map.class);
-        String orderId = (String) m.get("orderId");
+        String orderId = String.valueOf(m.get("orderId"));
         String evt = objectMapper.writeValueAsString(Map.of("orderId", orderId, "status", "FAILED", "reason", "stock_insufficient"));
         kafkaTemplate.send("order-failed", orderId, evt);
     }
@@ -55,7 +66,7 @@ public class Orchestrator {
     @KafkaListener(topics = "payment-result", groupId = "saga-orchestrator")
     public void onPaymentResult(String message) throws Exception {
         Map<String, Object> m = objectMapper.readValue(message, Map.class);
-        String orderId = (String) m.get("orderId");
+        String orderId = String.valueOf(m.get("orderId"));
         String status = (String) m.get("status");
         if ("SUCCESS".equalsIgnoreCase(status)) {
             String shipmentReq = objectMapper.writeValueAsString(Map.of("orderId", orderId, "address", m.getOrDefault("address","default")));
@@ -72,7 +83,7 @@ public class Orchestrator {
     @KafkaListener(topics = "shipment-result", groupId = "saga-orchestrator")
     public void onShipmentResult(String message) throws Exception {
         Map<String, Object> m = objectMapper.readValue(message, Map.class);
-        String orderId = (String) m.get("orderId");
+        String orderId = String.valueOf(m.get("orderId"));
         String status = (String) m.get("status");
         if ("SCHEDULED".equalsIgnoreCase(status) || "SUCCESS".equalsIgnoreCase(status)) {
             String evt = objectMapper.writeValueAsString(Map.of("orderId", orderId, "status", "COMPLETED"));

@@ -43,15 +43,16 @@ public class OrderService {
                     .build();
             Order saved = orderRepository.save(order);
 
-            // publish order-created event
-            OrderDtos.OrderCreatedEvent event = new OrderDtos.OrderCreatedEvent(
-                    saved.getId(),
-                    saved.getUserId(),
-                    objectMapper.readValue(saved.getItemsJson(), List.class),
-                    saved.getAmount(),
-                    saved.getStatus()
+            // publish order-created event as JSON string with necessary fields
+            Map<String,Object> evt = Map.of(
+                    "orderId", String.valueOf(saved.getId()),
+                    "userId", saved.getUserId(),
+                    "items", objectMapper.readValue(saved.getItemsJson(), List.class),
+                    "amount", saved.getAmount(),
+                    "status", saved.getStatus()
             );
-            kafkaTemplate.send("order-created", event);
+            String evtJson = objectMapper.writeValueAsString(evt);
+            kafkaTemplate.send("order-created", String.valueOf(saved.getId()), evtJson);
             return saved;
         } catch (Exception ex) {
             throw new RuntimeException("Order creation failed", ex);

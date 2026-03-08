@@ -22,6 +22,10 @@ public class UserEntity {
     @Column(nullable = false)
     private String password;
 
-    // roles veya ek alanlar eklenecekse buraya
-}
+    private String firstName;
 
+    private String lastName;
+
+    @Column(unique = true)
+    private String email;
+}

@@ -12,6 +12,9 @@ public class AuthDtos {
         private String username;
         @NotBlank
         private String password;
+        private String firstName;
+        private String lastName;
+        private String email;
     }
 
     @Data
@@ -31,6 +34,10 @@ public class AuthDtos {
         private String accessToken;
         private String refreshToken;
         private String tokenType = "Bearer";
+        private String username;
+        private String firstName;
+        private String lastName;
+        private String email;
     }
 
     @Data
@@ -41,4 +48,3 @@ public class AuthDtos {
         private String refreshToken;
     }
 }
-
