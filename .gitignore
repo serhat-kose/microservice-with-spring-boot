@@ -1,0 +1,93 @@
+# Maven
+**/target/
+**/classes/
+**/generated-sources/
+**/maven-status/
+*.log
+
+# IntelliJ
+.idea/
+*.iml
+*.iws
+out/
+
+# VS Code
+.vscode/
+
+# Mac
+.DS_Store
+
+# Windows
+Thumbs.db
+desktop.ini
+
+# Eclipse
+.project
+.classpath
+.settings/
+
+# Gradle
+.gradle/
+
+# logs
+logs
+*.log
+
+# temp files
+*.tmp
+*.temp
+
+# Docker
+docker-compose.override.yml
+**/*.tar
+
+# Environment and secrets
+.env
+.env.*
+*.key
+*.pem
+
+# OS generated files
+ehthumbs.db
+Icon?
+
+# Other build artifacts
+*.class
+*.jar
+*.war
+*.ear
+
+# Ignore IntelliJ module output
+*/out/
+
+# Ignore Maven wrapper jar
+mvnw.cmd
+mvnw
+
+# Exclude any local properties
+local.properties
+
+# Exclude coverage reports
+coverage/
+jacoco.exec
+
+# Exclude target folders again to be extra safe
+/target/
+**/target/
+
+# Node
+node_modules/
+npm-debug.log
+
+# Ignore generated files from Docker builds
+**/app.jar
+
+# Ignore IDE run configs
+*.run.xml
+
+# Specific: avoid committing jar files in service folders
+**/*.jar
+
+# Keep track: allow committing README, pom.xml, source code only
+
+

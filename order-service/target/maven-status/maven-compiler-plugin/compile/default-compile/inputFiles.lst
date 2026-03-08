@@ -1,8 +1,0 @@
-C:\Users\Serhat\Desktop\microservice-projects\microservice-with-spring-boot\order-service\src\main\java\com\example\orderservice\OrderServiceApplication.java
-C:\Users\Serhat\Desktop\microservice-projects\microservice-with-spring-boot\order-service\src\main\java\com\example\orderservice\model\Order.java
-C:\Users\Serhat\Desktop\microservice-projects\microservice-with-spring-boot\order-service\src\main\java\com\example\orderservice\listener\OrderEventsListener.java
-C:\Users\Serhat\Desktop\microservice-projects\microservice-with-spring-boot\order-service\src\main\java\com\example\orderservice\repository\OrderRepository.java
-C:\Users\Serhat\Desktop\microservice-projects\microservice-with-spring-boot\order-service\src\main\java\com\example\orderservice\service\OrderService.java
-C:\Users\Serhat\Desktop\microservice-projects\microservice-with-spring-boot\order-service\src\main\java\com\example\orderservice\listener\OrderCreateListener.java
-C:\Users\Serhat\Desktop\microservice-projects\microservice-with-spring-boot\order-service\src\main\java\com\example\orderservice\controller\OrderController.java
-C:\Users\Serhat\Desktop\microservice-projects\microservice-with-spring-boot\order-service\src\main\java\com\example\orderservice\dto\OrderDtos.java

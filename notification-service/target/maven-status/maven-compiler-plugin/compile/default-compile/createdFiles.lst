@@ -1,6 +1,0 @@
-com\example\notificationservice\controller\NotificationController.class
-com\example\notificationservice\service\NotificationService.class
-com\example\notificationservice\model\Notification$NotificationBuilder.class
-com\example\notificationservice\model\Notification.class
-com\example\notificationservice\listener\NotificationListener.class
-com\example\notificationservice\NotificationServiceApplication.class
