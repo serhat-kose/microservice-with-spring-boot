@@ -1,6 +1,6 @@
-package com.example.authservice.security;
+package com.serhat.authservice.security;
 
-import com.example.authservice.repository.UserRepository;
+import com.serhat.authservice.repository.UserRepository;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;

@@ -1,4 +1,4 @@
-package com.example.authservice.model;
+package com.serhat.authservice.model;
 
 import jakarta.persistence.*;
 import lombok.*;

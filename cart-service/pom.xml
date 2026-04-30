@@ -8,7 +8,7 @@
 		<version>3.1.4</version>
 		<relativePath/> <!-- lookup parent from repository -->
 	</parent>
-	<groupId>com.serhat</groupId>
+	<groupId>com.example</groupId>
 	<artifactId>cart-service</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
 	<name>cart-service</name>

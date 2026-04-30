@@ -1,4 +1,4 @@
-package com.example.authservice.security;
+package com.serhat.authservice.security;
 
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.*;

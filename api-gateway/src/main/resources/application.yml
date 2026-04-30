@@ -12,17 +12,6 @@ spring:
           '[/**]':
             allowedOrigins: ['*']
             allowedMethods: ['GET','POST','PUT','DELETE','OPTIONS']
-      routes:
-        - id : product-service
-          #uri: http://localhost:8045
-          uri: lb://PRODUCT-SERVICE
-          predicates:
-            - Path=/product/**
-        - id: cart-service
-          #uri: http://localhost:8050
-          uri: lb://CART-SERVICE
-          predicates:
-            - Path=/cart/**
 
 eureka:
   instance:

@@ -1,9 +1,9 @@
-package com.example.authservice.service;
+package com.serhat.authservice.service;
 
-import com.example.authservice.dto.AuthDtos.*;
-import com.example.authservice.model.UserEntity;
-import com.example.authservice.repository.UserRepository;
-import com.example.authservice.security.JwtUtil;
+import com.serhat.authservice.dto.AuthDtos.*;
+import com.serhat.authservice.model.UserEntity;
+import com.serhat.authservice.repository.UserRepository;
+import com.serhat.authservice.security.JwtUtil;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 

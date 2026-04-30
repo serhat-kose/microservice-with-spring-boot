@@ -1,7 +1,7 @@
-package com.example.authservice.controller;
+package com.serhat.authservice.controller;
 
-import com.example.authservice.dto.AuthDtos.*;
-import com.example.authservice.service.AuthService;
+import com.serhat.authservice.dto.AuthDtos.*;
+import com.serhat.authservice.service.AuthService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;

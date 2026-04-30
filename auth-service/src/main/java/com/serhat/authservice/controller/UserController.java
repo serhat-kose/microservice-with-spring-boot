@@ -1,7 +1,7 @@
-package com.example.authservice.controller;
+package com.serhat.authservice.controller;
 
-import com.example.authservice.model.UserEntity;
-import com.example.authservice.repository.UserRepository;
+import com.serhat.authservice.model.UserEntity;
+import com.serhat.authservice.repository.UserRepository;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
