@@ -1,4 +1,4 @@
-package com.serhat.ecommerce.cartservice.entity;
+package com.serhat.ecommerce.cartservice.model;
 
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;

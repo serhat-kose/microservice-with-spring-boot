@@ -2,12 +2,12 @@
 FROM maven:3.9.6-eclipse-temurin-17 AS builder
 WORKDIR /build
 COPY pom.xml .
-COPY stock-service/pom.xml stock-service/pom.xml
-COPY stock-service/src stock-service/src
-RUN mvn -B -pl stock-service -am package -DskipTests
+COPY cart-service/pom.xml cart-service/pom.xml
+COPY cart-service/src cart-service/src
+RUN mvn -B -pl cart-service -am package -DskipTests
 
 FROM eclipse-temurin:17-jre-jammy
 WORKDIR /app
-COPY --from=builder /build/stock-service/target/*.jar app.jar
-EXPOSE 8084
+COPY --from=builder /build/cart-service/target/*.jar app.jar
+EXPOSE 8087
 ENTRYPOINT ["java","-jar","/app/app.jar"]

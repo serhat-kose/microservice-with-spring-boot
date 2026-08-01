@@ -1,24 +1,29 @@
 package com.serhat.ecommerce.cartservice.service;
 
 import com.serhat.ecommerce.cartservice.dto.CartDtos;
+import com.serhat.ecommerce.cartservice.exception.CartNotFoundException;
 import com.serhat.ecommerce.cartservice.model.Cart;
 import com.serhat.ecommerce.cartservice.model.CartItem;
 import com.serhat.ecommerce.cartservice.repository.CartRepository;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import java.math.BigDecimal;
-import java.util.Optional;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
+import java.math.BigDecimal;
+import java.util.Optional;
+import java.util.concurrent.TimeUnit;
+
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class CartService {
 
     private final CartRepository cartRepository;
     private final KafkaTemplate<String, Object> kafkaTemplate;
-    private final ObjectMapper objectMapper;
 
     public Cart getCart(String userId) {
         return cartRepository.findByUserId(userId).orElseGet(() -> {
@@ -49,32 +54,37 @@ public class CartService {
     }
 
     @Transactional
-    public Cart removeItem(String userId, String productId) {
-        Cart cart = cartRepository.findByUserId(userId).orElseThrow();
+    public Cart removeItem(String userId, Long productId) {
+        Cart cart = cartRepository.findByUserId(userId).orElseThrow(() -> new CartNotFoundException(userId));
         cart.getItems().removeIf(i -> i.getProductId().equals(productId));
         return cartRepository.save(cart);
     }
 
-    @Transactional
-    public void clearCart(String userId) {
-        cartRepository.findByUserId(userId).ifPresent(c -> {
-            c.getItems().clear();
-            cartRepository.save(c);
-        });
-    }
-
+    /**
+     * Waits for the Kafka send to be acknowledged before clearing the cart, so a
+     * broker failure leaves the cart intact instead of silently dropping the order
+     * (previously the cart was cleared unconditionally right after a fire-and-forget send).
+     */
     @Transactional
     public void checkout(String userId) {
-        Cart cart = cartRepository.findByUserId(userId).orElseThrow();
+        Cart cart = cartRepository.findByUserId(userId).orElseThrow(() -> new CartNotFoundException(userId));
+        if (cart.getItems().isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Cart is empty");
+        }
+
         BigDecimal total = cart.getItems().stream()
-                .map(i -> i.getPrice().multiply(java.math.BigDecimal.valueOf(i.getQuantity())))
+                .map(i -> i.getPrice().multiply(BigDecimal.valueOf(i.getQuantity())))
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         CartDtos.CheckoutEvent event = new CartDtos.CheckoutEvent(userId, cart.getItems(), total);
-        kafkaTemplate.send("cart-checkout", event);
-        // temizle (saga başarısına bırakılmak istenirse bu satır saga yerine orchestrator'da yapılabilir)
+        try {
+            kafkaTemplate.send("cart-checkout", userId, event).get(5, TimeUnit.SECONDS);
+        } catch (Exception e) {
+            log.error("Failed to publish cart-checkout event for user {}", userId, e);
+            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "Checkout is temporarily unavailable, please retry");
+        }
+
         cart.getItems().clear();
         cartRepository.save(cart);
     }
 }
-
