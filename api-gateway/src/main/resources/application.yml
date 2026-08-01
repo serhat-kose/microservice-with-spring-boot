@@ -7,18 +7,50 @@ spring:
   cloud:
     gateway:
       globalcors:
-        # basit CORS örneği; gerektiğinde sıkılaştırın
+        # Permissive local-dev CORS; tighten allowed-origins for real deployments.
         corsConfigurations:
           '[/**]':
             allowedOrigins: ['*']
             allowedMethods: ['GET','POST','PUT','DELETE','OPTIONS']
+      routes:
+        - id: auth-service
+          uri: lb://auth-service
+          predicates:
+            - Path=/api/auth/**,/api/users/**
+        - id: product-service
+          uri: lb://product-service
+          predicates:
+            - Path=/api/products/**
+        - id: cart-service
+          uri: lb://cart-service
+          predicates:
+            - Path=/api/cart/**
+        - id: stock-service
+          uri: lb://stock-service
+          predicates:
+            - Path=/api/stocks/**
+        - id: order-service
+          uri: lb://order-service
+          predicates:
+            - Path=/api/orders/**
+        - id: payment-service
+          uri: lb://payment-service
+          predicates:
+            - Path=/api/payments/**
+        - id: notification-service
+          uri: lb://notification-service
+          predicates:
+            - Path=/api/notifications/**
+
+jwt:
+  secret: ${JWT_SECRET:default_change_this_secret_to_strong_value_which_is_long}
 
 eureka:
   instance:
     appname: ${spring.application.name}
   client:
     service-url:
-      defaultZone: http://localhost:9000/eureka
+      defaultZone: ${EUREKA_SERVER:http://eureka-server:8761/eureka/}
 
 management:
   endpoints:
