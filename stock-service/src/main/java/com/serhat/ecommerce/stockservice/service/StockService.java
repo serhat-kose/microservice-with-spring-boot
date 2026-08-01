@@ -1,11 +1,14 @@
 package com.serhat.ecommerce.stockservice.service;
 
 import com.serhat.ecommerce.stockservice.exception.InsufficientStockException;
+import com.serhat.ecommerce.stockservice.model.ProcessedReservation;
 import com.serhat.ecommerce.stockservice.model.Stock;
+import com.serhat.ecommerce.stockservice.repository.ProcessedReservationRepository;
 import com.serhat.ecommerce.stockservice.repository.StockRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
@@ -15,9 +18,30 @@ import java.util.Optional;
 @Transactional
 public class StockService {
     private final StockRepository repo;
+    private final ProcessedReservationRepository processedReservationRepository;
 
-    public StockService(StockRepository repo) {
+    public StockService(StockRepository repo, ProcessedReservationRepository processedReservationRepository) {
         this.repo = repo;
+        this.processedReservationRepository = processedReservationRepository;
+    }
+
+    /**
+     * Idempotent entry point for the saga's stock-reserve-request: if this orderId was
+     * already reserved (a redelivered Kafka message under at-least-once semantics),
+     * skips straight to true without decrementing stock again. Otherwise reserves and
+     * records the orderId as processed in the same transaction as the decrements, so a
+     * crash between "decrement" and "mark processed" can't happen.
+     *
+     * @return true if reserved (either just now or previously); throws
+     *         InsufficientStockException if this is a new reservation attempt that fails.
+     */
+    public boolean reserveForOrder(String orderId, List<Map<String, Object>> items) {
+        if (processedReservationRepository.existsById(orderId)) {
+            return true;
+        }
+        reserveItems(items);
+        processedReservationRepository.save(new ProcessedReservation(orderId, Instant.now()));
+        return true;
     }
 
     /**

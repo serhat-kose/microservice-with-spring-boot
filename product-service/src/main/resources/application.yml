@@ -1,5 +1,11 @@
 server:
   port: ${SERVER_PORT:8083}
+  tomcat:
+    threads:
+      max: ${TOMCAT_MAX_THREADS:200}
+      min-spare: ${TOMCAT_MIN_THREADS:20}
+    accept-count: 100
+    max-connections: 10000
 
 spring:
   application:
@@ -8,6 +14,12 @@ spring:
     url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/productdb}
     username: ${SPRING_DATASOURCE_USERNAME:postgres}
     password: ${SPRING_DATASOURCE_PASSWORD:postgres}
+    hikari:
+      maximum-pool-size: ${DB_POOL_MAX:20}
+      minimum-idle: ${DB_POOL_MIN_IDLE:5}
+      connection-timeout: 3000
+      idle-timeout: 60000
+      max-lifetime: 1800000
   jpa:
     hibernate:
       ddl-auto: update
@@ -17,6 +29,12 @@ spring:
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.apache.kafka.common.serialization.StringSerializer
+      acks: all
+      retries: 5
+      properties:
+        enable.idempotence: true
+        linger.ms: 10
+        compression.type: snappy
 
 eureka:
   client:

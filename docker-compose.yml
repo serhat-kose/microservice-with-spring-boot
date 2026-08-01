@@ -32,6 +32,11 @@ services:
       KAFKA_CFG_CONTROLLER_QUORUM_VOTERS: 0@kafka:9093
       KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
       KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE: "true"
+      # Auto-created topics get 6 partitions by default so KAFKA_LISTENER_CONCURRENCY
+      # on the consumer side (see each service's application.yml) can actually run
+      # multiple partition consumers in parallel instead of being capped at 1.
+      KAFKA_CFG_NUM_PARTITIONS: "6"
+      KAFKA_HEAP_OPTS: "-Xmx1g -Xms1g"
       ALLOW_PLAINTEXT_LISTENER: "yes"
     volumes:
       - kafka-data:/bitnami/kafka
@@ -42,6 +47,17 @@ services:
     healthcheck:
       test: ["CMD-SHELL", "kafka-topics.sh --bootstrap-server localhost:9092 --list"]
       interval: 10s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    networks:
+      - ecommerce-net
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
       timeout: 5s
       retries: 10
 
@@ -383,8 +399,12 @@ services:
       GATEWAY_PORT: "8080"
       JWT_SECRET: ${JWT_SECRET:?JWT_SECRET must be set in .env}
       EUREKA_SERVER: http://eureka-server:8761/eureka/
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
     depends_on:
       eureka-server:
+        condition: service_healthy
+      redis:
         condition: service_healthy
       auth-service:
         condition: service_started

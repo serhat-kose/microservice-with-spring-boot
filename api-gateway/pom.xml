@@ -23,6 +23,17 @@
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-security</artifactId>
 		</dependency>
+		<!-- Circuit breaker + timeout per route, so one slow/down service can't
+		     exhaust the gateway's request-handling capacity -->
+		<dependency>
+			<groupId>org.springframework.cloud</groupId>
+			<artifactId>spring-cloud-starter-circuitbreaker-reactor-resilience4j</artifactId>
+		</dependency>
+		<!-- Backs spring.cloud.gateway.routes[].filters RequestRateLimiter -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-data-redis-reactive</artifactId>
+		</dependency>
 		<!-- Eureka client for service registration/discovery -->
 		<dependency>
 			<groupId>org.springframework.cloud</groupId>
