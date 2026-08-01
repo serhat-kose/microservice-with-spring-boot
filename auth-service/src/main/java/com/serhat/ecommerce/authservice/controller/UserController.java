@@ -1,6 +1,6 @@
 package com.serhat.ecommerce.authservice.controller;
 
-import com.serhat.ecommerce.authservice.model.UserEntity;
+import com.serhat.ecommerce.authservice.dto.UserDtos.UserResponse;
 import com.serhat.ecommerce.authservice.repository.UserRepository;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -15,17 +15,18 @@ public class UserController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<?> getById(@PathVariable Long id) {
+    public ResponseEntity<UserResponse> getById(@PathVariable Long id) {
         return userRepository.findById(id)
-                .map(u -> ResponseEntity.ok(u))
+                .map(UserResponse::from)
+                .map(ResponseEntity::ok)
                 .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
     @GetMapping("/by-username/{username}")
-    public ResponseEntity<?> getByUsername(@PathVariable String username) {
+    public ResponseEntity<UserResponse> getByUsername(@PathVariable String username) {
         return userRepository.findByUsername(username)
-                .map(u -> ResponseEntity.ok(u))
+                .map(UserResponse::from)
+                .map(ResponseEntity::ok)
                 .orElseGet(() -> ResponseEntity.notFound().build());
     }
 }
-

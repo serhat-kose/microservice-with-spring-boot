@@ -7,7 +7,6 @@ import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.ProviderManager;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
-import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.core.userdetails.*;
@@ -56,12 +55,14 @@ public class SecurityConfig {
         http
           .csrf(csrf -> csrf.disable())
           .authorizeHttpRequests(auth -> auth
-                  .requestMatchers("/api/auth/**", "/h2-console/**").permitAll()
+                  .requestMatchers("/api/auth/**").permitAll()
                   .anyRequest().authenticated()
           )
+          .sessionManagement(session -> session.sessionCreationPolicy(
+                  org.springframework.security.config.http.SessionCreationPolicy.STATELESS))
           .addFilterBefore(jwtFilter, org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter.class)
-          .headers(headers -> headers.frameOptions(frame -> frame.disable()))
-          .httpBasic(Customizer.withDefaults());
+          .httpBasic(basic -> basic.disable())
+          .formLogin(form -> form.disable());
 
         return http.build();
     }

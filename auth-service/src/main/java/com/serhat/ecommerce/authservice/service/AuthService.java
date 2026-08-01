@@ -25,6 +25,9 @@ public class AuthService {
         if (userRepo.existsByUsername(req.getUsername())) {
             throw new IllegalArgumentException("Username already exists");
         }
+        if (userRepo.existsByEmail(req.getEmail())) {
+            throw new IllegalArgumentException("Email already exists");
+        }
         UserEntity u = UserEntity.builder()
                 .username(req.getUsername())
                 .password(passwordEncoder.encode(req.getPassword()))

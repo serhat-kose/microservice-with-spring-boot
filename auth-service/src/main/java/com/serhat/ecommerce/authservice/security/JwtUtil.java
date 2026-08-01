@@ -2,8 +2,10 @@ package com.serhat.ecommerce.authservice.security;
 
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
+import java.nio.charset.StandardCharsets;
 import java.security.Key;
 import java.util.Date;
 
@@ -13,11 +15,10 @@ public class JwtUtil {
     private final long accessTokenValidityMs;
     private final long refreshTokenValidityMs;
 
-    public JwtUtil() {
-        String secret = System.getenv().getOrDefault("JWT_SECRET", "default_change_this_secret_to_strong_value_which_is_long");
-        this.key = Keys.hmacShaKeyFor(secret.getBytes());
-        this.accessTokenValidityMs = 15 * 60 * 1000L; // 15 dakika
-        this.refreshTokenValidityMs = 7 * 24 * 60 * 60 * 1000L; // 7 gün
+    public JwtUtil(@Value("${jwt.secret}") String secret) {
+        this.key = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
+        this.accessTokenValidityMs = 15 * 60 * 1000L; // 15 minutes
+        this.refreshTokenValidityMs = 7 * 24 * 60 * 60 * 1000L; // 7 days
     }
 
     public String generateAccessToken(String username) {
