@@ -15,9 +15,8 @@ public class OrderCreateListener {
     private final ObjectMapper objectMapper;
 
     @KafkaListener(topics = "order-create", groupId = "order-service")
-    public void onOrderCreate(Object payload) {
-        // payload muhtemelen JSON; spring-kafka ile object olarak gelirse map'e çevir
-        Map<String, Object> map = objectMapper.convertValue(payload, Map.class);
+    public void onOrderCreate(String message) throws Exception {
+        Map<String, Object> map = objectMapper.readValue(message, Map.class);
         orderService.createOrderFromEvent(map);
     }
 }

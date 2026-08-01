@@ -1,13 +1,13 @@
-FROM maven:3.9.2-eclipse-temurin-17 AS builder
+# Build context must be the repository root (parent pom.xml lives there).
+FROM maven:3.9.6-eclipse-temurin-17 AS builder
 WORKDIR /build
 COPY pom.xml .
-# ...existing code...
-COPY src ./src
-RUN mvn -B package -DskipTests
+COPY order-service/pom.xml order-service/pom.xml
+COPY order-service/src order-service/src
+RUN mvn -B -pl order-service -am package -DskipTests
 
 FROM eclipse-temurin:17-jre-jammy
 WORKDIR /app
-COPY --from=builder /build/target/order-service-0.0.1-SNAPSHOT.jar app.jar
-EXPOSE 8083
+COPY --from=builder /build/order-service/target/*.jar app.jar
+EXPOSE 8082
 ENTRYPOINT ["java","-jar","/app/app.jar"]
-

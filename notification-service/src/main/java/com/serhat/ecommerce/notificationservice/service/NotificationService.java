@@ -2,6 +2,8 @@ package com.serhat.ecommerce.notificationservice.service;
 
 import com.serhat.ecommerce.notificationservice.dto.NotificationPayload;
 import com.serhat.ecommerce.notificationservice.dto.OrderItem;
+import com.serhat.ecommerce.notificationservice.model.Notification;
+import com.serhat.ecommerce.notificationservice.repository.NotificationRepository;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
@@ -15,6 +17,7 @@ import org.springframework.web.client.RestTemplate;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
@@ -23,49 +26,32 @@ public class NotificationService {
 
     private final JavaMailSender mailSender;
     private final RestTemplate restTemplate;
+    private final NotificationRepository notificationRepository;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    @Value("${auth.service.url:http://auth-service:8080}")
+    @Value("${auth.service.url:http://auth-service:8081}")
     private String authServiceUrl;
 
-    public NotificationService(JavaMailSender mailSender) {
+    public NotificationService(JavaMailSender mailSender, RestTemplate restTemplate,
+                                NotificationRepository notificationRepository) {
         this.mailSender = mailSender;
-        this.restTemplate = new RestTemplate();
+        this.restTemplate = restTemplate;
+        this.notificationRepository = notificationRepository;
     }
 
-    // eski basit loglama metodu korunuyor
-    public void sendNotification(String message) {
-        log.info("[Notification] {}", message);
-    }
-
-    // Yeni metot: sipariş olaylarında e-posta gönderimi
     public void sendOrderNotification(NotificationPayload payload) {
         if (payload == null) {
-            log.warn("Boş payload, mail atılmayacak.");
+            log.warn("Empty payload, nothing to notify.");
             return;
         }
 
-        // Eğer payload içinde doğrudan e-mail yoksa auth-service'ten almayı dene (userId varsa)
         if ((payload.getEmail() == null || payload.getEmail().isEmpty()) && payload.getUserId() != null) {
-            try {
-                String url = authServiceUrl + "/api/users/" + payload.getUserId();
-                // beklenen dönen JSON: {"id":"...","firstName":"...","lastName":"...","email":"..."}
-                var resp = restTemplate.getForObject(url, String.class);
-                if (resp != null) {
-                    var map = objectMapper.readValue(resp, new TypeReference<java.util.Map<String,Object>>(){});
-                    if (payload.getFirstName() == null) payload.setFirstName((String) map.getOrDefault("firstName", null));
-                    if (payload.getLastName() == null) payload.setLastName((String) map.getOrDefault("lastName", null));
-                    if (payload.getEmail() == null) payload.setEmail((String) map.getOrDefault("email", null));
-                }
-            } catch (RestClientException ex) {
-                log.warn("Auth service çağrısı başarısız: {}", ex.getMessage());
-            } catch (Exception ex) {
-                log.warn("Auth service dönüşünün parse edilmesinde hata: {}", ex.getMessage());
-            }
+            enrichFromAuthService(payload);
         }
 
         if (payload.getEmail() == null || payload.getEmail().isEmpty()) {
-            log.warn("E-posta adresi yok, mail gönderimi atlandı. payload={}", payload);
+            log.warn("No email address available, skipping notification for order {}", payload.getOrderId());
+            persist(payload, "SKIPPED_NO_EMAIL");
             return;
         }
 
@@ -80,30 +66,62 @@ public class NotificationService {
             msg.setFrom("no-reply@ecommerce.local");
             mailSender.send(msg);
             log.info("Notification email sent to {} for order {}", payload.getEmail(), payload.getOrderId());
+            persist(payload, "SENT");
         } catch (Exception e) {
-            log.error("Mail gönderimi sırasında hata: {}", e.getMessage(), e);
+            log.error("Failed to send notification email: {}", e.getMessage(), e);
+            persist(payload, "FAILED");
         }
+    }
+
+    private void enrichFromAuthService(NotificationPayload payload) {
+        try {
+            String url = authServiceUrl + "/api/users/" + payload.getUserId();
+            String resp = restTemplate.getForObject(url, String.class);
+            if (resp != null) {
+                Map<String, Object> map = objectMapper.readValue(resp, new TypeReference<Map<String, Object>>() {});
+                if (payload.getFirstName() == null) payload.setFirstName((String) map.get("firstName"));
+                if (payload.getLastName() == null) payload.setLastName((String) map.get("lastName"));
+                if (payload.getEmail() == null) payload.setEmail((String) map.get("email"));
+            }
+        } catch (RestClientException ex) {
+            log.warn("auth-service lookup failed for user {}: {}", payload.getUserId(), ex.getMessage());
+        } catch (Exception ex) {
+            log.warn("Failed to parse auth-service response for user {}: {}", payload.getUserId(), ex.getMessage());
+        }
+    }
+
+    private void persist(NotificationPayload payload, String status) {
+        Notification n = Notification.builder()
+                .eventType(payload.getEventType())
+                .orderId(payload.getOrderId())
+                .userId(payload.getUserId())
+                .email(payload.getEmail())
+                .status(status)
+                .build();
+        notificationRepository.save(n);
     }
 
     private String buildSubject(String eventType, String orderId) {
         if ("PAYMENT_COMPLETED".equalsIgnoreCase(eventType)) {
-            return "Sipariş " + orderId + " - Ödeme Alındı";
+            return "Order " + orderId + " - Payment received";
         } else if ("RESERVATION_CREATED".equalsIgnoreCase(eventType)) {
-            return "Sipariş " + orderId + " - Rezervasyon Oluşturuldu";
+            return "Order " + orderId + " - Reservation created";
+        } else if ("ORDER_FAILED".equalsIgnoreCase(eventType)) {
+            return "Order " + orderId + " - Failed";
         } else {
-            return "Sipariş " + orderId + " - Bilgilendirme";
+            return "Order " + orderId + " - Update";
         }
     }
 
     private String buildBody(String firstName, String lastName, String orderId, List<OrderItem> items) {
-        String header = String.format("Merhaba %s %s,%n%nSipariş Numaranız: %s%n%n",
+        String header = String.format("Hello %s %s,%n%nYour order number: %s%n%n",
                 firstName == null ? "" : firstName,
                 lastName == null ? "" : lastName,
                 orderId == null ? "-" : orderId);
 
         String itemsText = "";
         if (items != null && !items.isEmpty()) {
-            itemsText = "Ürün Detayları:\n" +
+            itemsText = "Items:\n" +
                     items.stream()
                             .map(i -> String.format("- %s (x%d) @ %s = %s",
                                     i.getName() == null ? i.getProductId() : i.getName(),
@@ -114,7 +132,7 @@ public class NotificationService {
                     + "\n\n";
         }
 
-        String footer = "Teşekkürler,\nE-Ticaret Takımı";
+        String footer = "Thanks,\nThe Ecommerce Team";
 
         return header + itemsText + footer;
     }

@@ -1,6 +1,6 @@
 package com.serhat.ecommerce.orderservice.service;
 
-import com.serhat.ecommerce.orderservice.dto.OrderDtos;
+import com.serhat.ecommerce.orderservice.exception.OrderNotFoundException;
 import com.serhat.ecommerce.orderservice.model.Order;
 import com.serhat.ecommerce.orderservice.repository.OrderRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -20,7 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class OrderService {
 
     private final OrderRepository orderRepository;
-    private final KafkaTemplate<String, Object> kafkaTemplate;
+    private final KafkaTemplate<String, String> kafkaTemplate;
     private final ObjectMapper objectMapper;
 
     @Transactional
@@ -60,7 +60,8 @@ public class OrderService {
     }
 
     public Order getById(Long id) {
-        return orderRepository.findById(id).orElseThrow();
+        return orderRepository.findById(id)
+                .orElseThrow(() -> new OrderNotFoundException(id));
     }
 
     public List<Order> getByUser(String userId) {
@@ -69,7 +70,8 @@ public class OrderService {
 
     @Transactional
     public void updateStatus(Long orderId, String status) {
-        Order o = orderRepository.findById(orderId).orElseThrow();
+        Order o = orderRepository.findById(orderId)
+                .orElseThrow(() -> new OrderNotFoundException(orderId));
         o.setStatus(status);
         orderRepository.save(o);
     }

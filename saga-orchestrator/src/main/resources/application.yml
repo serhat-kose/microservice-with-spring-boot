@@ -1,7 +1,31 @@
+server:
+  port: ${SERVER_PORT:8088}
+
+spring:
+  application:
+    name: saga-orchestrator
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/sagadb}
+    username: ${SPRING_DATASOURCE_USERNAME:postgres}
+    password: ${SPRING_DATASOURCE_PASSWORD:postgres}
+  jpa:
+    hibernate:
+      ddl-auto: update
+    open-in-view: false
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+    consumer:
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      group-id: saga-orchestrator
+      auto-offset-reset: earliest
+
 eureka:
   client:
     service-url:
       defaultZone: ${EUREKA_SERVER:http://eureka-server:8761/eureka/}
     register-with-eureka: true
     fetch-registry: true
-

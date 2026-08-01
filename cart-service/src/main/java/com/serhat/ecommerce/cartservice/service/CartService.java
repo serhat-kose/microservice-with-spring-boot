@@ -5,6 +5,7 @@ import com.serhat.ecommerce.cartservice.exception.CartNotFoundException;
 import com.serhat.ecommerce.cartservice.model.Cart;
 import com.serhat.ecommerce.cartservice.model.CartItem;
 import com.serhat.ecommerce.cartservice.repository.CartRepository;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -23,7 +24,8 @@ import java.util.concurrent.TimeUnit;
 public class CartService {
 
     private final CartRepository cartRepository;
-    private final KafkaTemplate<String, Object> kafkaTemplate;
+    private final KafkaTemplate<String, String> kafkaTemplate;
+    private final ObjectMapper objectMapper;
 
     public Cart getCart(String userId) {
         return cartRepository.findByUserId(userId).orElseGet(() -> {
@@ -78,7 +80,8 @@ public class CartService {
 
         CartDtos.CheckoutEvent event = new CartDtos.CheckoutEvent(userId, cart.getItems(), total);
         try {
-            kafkaTemplate.send("cart-checkout", userId, event).get(5, TimeUnit.SECONDS);
+            String json = objectMapper.writeValueAsString(event);
+            kafkaTemplate.send("cart-checkout", userId, json).get(5, TimeUnit.SECONDS);
         } catch (Exception e) {
             log.error("Failed to publish cart-checkout event for user {}", userId, e);
             throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "Checkout is temporarily unavailable, please retry");
