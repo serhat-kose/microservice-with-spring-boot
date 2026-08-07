@@ -2,7 +2,6 @@ package com.serhat.ecommerce.cartservice.dto;
 
 import com.serhat.ecommerce.cartservice.model.Cart;
 import com.serhat.ecommerce.cartservice.model.CartItem;
-import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
@@ -13,6 +12,12 @@ import java.math.BigDecimal;
 import java.util.List;
 
 public class CartDtos {
+
+    /**
+     * Deliberately carries no price. The price previously came from the client and was
+     * stored verbatim, so a shopper could add an item at any price they chose and check out
+     * at it. It is now resolved server-side from the catalog read-model.
+     */
     @Data
     @NoArgsConstructor
     @AllArgsConstructor
@@ -22,9 +27,6 @@ public class CartDtos {
         @NotNull
         @Min(1)
         private Integer quantity;
-        @NotNull
-        @DecimalMin(value = "0.0", inclusive = true)
-        private BigDecimal price;
     }
 
     @Data
@@ -36,12 +38,24 @@ public class CartDtos {
         private BigDecimal total;
     }
 
-    public record CartResponse(Long id, String userId, List<CartItem> items, BigDecimal total) {
+    public record CartItemResponse(Long productId, String productName, Integer quantity,
+                                   BigDecimal unitPrice, BigDecimal lineTotal) {
+        public static CartItemResponse from(CartItem item) {
+            BigDecimal lineTotal = item.getPrice().multiply(BigDecimal.valueOf(item.getQuantity()));
+            return new CartItemResponse(item.getProductId(), item.getProductName(),
+                    item.getQuantity(), item.getPrice(), lineTotal);
+        }
+    }
+
+    public record CartResponse(Long id, String userId, List<CartItemResponse> items, BigDecimal total) {
         public static CartResponse from(Cart cart) {
-            BigDecimal total = cart.getItems().stream()
-                    .map(i -> i.getPrice().multiply(BigDecimal.valueOf(i.getQuantity())))
+            List<CartItemResponse> items = cart.getItems().stream()
+                    .map(CartItemResponse::from)
+                    .toList();
+            BigDecimal total = items.stream()
+                    .map(CartItemResponse::lineTotal)
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
-            return new CartResponse(cart.getId(), cart.getUserId(), cart.getItems(), total);
+            return new CartResponse(cart.getId(), cart.getUserId(), items, total);
         }
     }
 }

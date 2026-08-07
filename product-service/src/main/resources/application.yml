@@ -46,3 +46,11 @@ management:
     web:
       exposure:
         include: health,info
+
+ecommerce:
+  security:
+    # Anonymous shoppers can browse the catalog; writes still require ADMIN/SELLER
+    # via @PreAuthorize on the controller.
+    public-get-paths:
+      - /api/products
+      - /api/products/**

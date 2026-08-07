@@ -12,7 +12,6 @@
 
 	<groupId>com.serhat.ecommerce</groupId>
 	<artifactId>eureka-server</artifactId>
-	<version>0.0.1-SNAPSHOT</version>
 	<name>eureka-server</name>
 	<description>Service registry (Netflix Eureka) for the ecommerce microservices platform</description>
 

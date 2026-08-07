@@ -1,0 +1,4 @@
+com.serhat.ecommerce.commons.web.WebCommonsAutoConfiguration
+com.serhat.ecommerce.commons.security.SecurityCommonsAutoConfiguration
+com.serhat.ecommerce.commons.security.ResourceServerAutoConfiguration
+com.serhat.ecommerce.commons.kafka.KafkaErrorHandlingAutoConfiguration

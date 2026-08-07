@@ -5,6 +5,8 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import lombok.*;
 
+import java.util.List;
+
 public class AuthDtos {
     @Data
     @NoArgsConstructor
@@ -44,6 +46,7 @@ public class AuthDtos {
         private String firstName;
         private String lastName;
         private String email;
+        private List<String> roles;
     }
 
     @Data

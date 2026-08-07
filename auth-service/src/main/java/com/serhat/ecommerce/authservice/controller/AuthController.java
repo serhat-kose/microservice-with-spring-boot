@@ -8,6 +8,8 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.http.HttpStatus;
 
+import java.util.NoSuchElementException;
+
 @RestController
 @RequestMapping("/api/auth")
 public class AuthController {
@@ -30,7 +32,10 @@ public class AuthController {
     public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest req) {
         try {
             return ResponseEntity.ok(svc.login(req));
-        } catch (Exception ex) {
+        } catch (NoSuchElementException ex) {
+            // Narrowed from catch(Exception): a broad catch reported infrastructure
+            // failures (e.g. the database being unreachable) as "Invalid credentials",
+            // hiding real outages behind a 401.
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid credentials");
         }
     }

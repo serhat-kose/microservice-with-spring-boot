@@ -4,7 +4,6 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>com.serhat.ecommerce</groupId>
 	<artifactId>api-gateway</artifactId>
-	<version>0.0.1-SNAPSHOT</version>
 	<packaging>jar</packaging>
 
 	<parent>
@@ -15,6 +14,10 @@
 	</parent>
 
 	<dependencies>
+		<dependency>
+			<groupId>com.serhat.ecommerce</groupId>
+			<artifactId>ecommerce-commons</artifactId>
+		</dependency>
 		<dependency>
 			<groupId>org.springframework.cloud</groupId>
 			<artifactId>spring-cloud-starter-gateway</artifactId>

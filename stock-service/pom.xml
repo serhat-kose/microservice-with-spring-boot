@@ -5,7 +5,6 @@
 
     <groupId>com.serhat.ecommerce</groupId>
     <artifactId>stock-service</artifactId>
-    <version>1.0-SNAPSHOT</version>
     <packaging>jar</packaging>
 
     <name>stock-service</name>
@@ -19,6 +18,14 @@
     </parent>
 
     <dependencies>
+		<dependency>
+			<groupId>com.serhat.ecommerce</groupId>
+			<artifactId>ecommerce-commons</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-security</artifactId>
+		</dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter</artifactId>

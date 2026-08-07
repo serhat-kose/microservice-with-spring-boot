@@ -36,10 +36,16 @@
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
+            <dependency>
+                <groupId>com.serhat.ecommerce</groupId>
+                <artifactId>ecommerce-commons</artifactId>
+                <version>${project.version}</version>
+            </dependency>
         </dependencies>
     </dependencyManagement>
 
     <modules>
+        <module>ecommerce-commons</module>
         <module>eureka-server</module>
         <module>api-gateway</module>
         <module>auth-service</module>

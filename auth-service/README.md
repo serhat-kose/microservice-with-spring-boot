@@ -4,10 +4,26 @@ Issues and validates JWT access/refresh tokens for the ecommerce platform. Store
 
 ## Endpoints
 
-- `POST /api/auth/register` - create a user, returns an access/refresh token pair
+- `POST /api/auth/register` - create a user (always as `CUSTOMER`), returns an access/refresh token pair
 - `POST /api/auth/login` - authenticate, returns an access/refresh token pair
-- `POST /api/auth/refresh` - exchange a refresh token for a new token pair
-- `GET /api/users/{id}`, `GET /api/users/by-username/{username}` - fetch a user profile (requires a valid access token)
+- `POST /api/auth/refresh` - exchange a **refresh** token for a new token pair (an access token is rejected here)
+- `GET /api/users/me` - the caller's own profile
+- `GET /api/users/me/addresses`, `POST`, `PUT /{id}`, `DELETE /{id}` - the caller's address book
+- `GET /api/users/{id}`, `GET /api/users/by-username/{username}` - **ADMIN only**
+
+## Roles
+
+`CUSTOMER` (default on self-registration), `SELLER` (manages catalog/stock), `ADMIN`
+(full management). Roles are carried in the JWT and forwarded downstream by the gateway
+as `X-User-Roles`; `SELLER`/`ADMIN` are granted out-of-band so that signing up cannot
+escalate into catalog management.
+
+## Authentication model
+
+This service issues tokens but does not validate them for its own protected endpoints -
+the gateway validates the JWT once and forwards the caller's identity as `X-User-Id` /
+`X-User-Name` / `X-User-Roles`. Those headers are only trustworthy because the gateway
+strips any client-supplied copy first, so this service must never be exposed directly.
 
 ## Configuration
 

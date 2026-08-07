@@ -52,8 +52,8 @@ public class StockService {
      */
     public void reserveItems(List<Map<String, Object>> items) {
         for (Map<String, Object> item : items) {
-            String productId = (String) item.get("productId");
-            int qty = ((Number) item.get("quantity")).intValue();
+            String productId = productId(item);
+            int qty = quantity(item);
             int updated = repo.decrementIfAvailable(productId, qty);
             if (updated == 0) {
                 throw new InsufficientStockException(productId);
@@ -63,14 +63,37 @@ public class StockService {
 
     public void releaseItems(List<Map<String, Object>> items) {
         for (Map<String, Object> item : items) {
-            String productId = (String) item.get("productId");
-            int qty = ((Number) item.get("quantity")).intValue();
+            String productId = productId(item);
+            int qty = quantity(item);
             int updated = repo.increment(productId, qty);
             if (updated == 0) {
                 // product row no longer exists (deleted) - recreate it rather than losing the released stock
                 repo.save(Stock.builder().productId(productId).quantity(qty).build());
             }
         }
+    }
+
+    /**
+     * Upstream services model the product identifier as a numeric id, so after JSON
+     * deserialisation into an untyped map the value arrives as an {@link Integer}/{@link Long},
+     * not a {@link String}. Casting it directly to String threw ClassCastException on every
+     * reservation, which dead-lettered the message and left the saga stuck with no
+     * stock-reserved and no stock-reservation-failed ever published.
+     */
+    private String productId(Map<String, Object> item) {
+        Object raw = item.get("productId");
+        if (raw == null) {
+            throw new IllegalArgumentException("Reservation item is missing productId");
+        }
+        return String.valueOf(raw);
+    }
+
+    private int quantity(Map<String, Object> item) {
+        Object raw = item.get("quantity");
+        if (!(raw instanceof Number number)) {
+            throw new IllegalArgumentException("Reservation item has a non-numeric quantity: " + raw);
+        }
+        return number.intValue();
     }
 
     public Stock createStock(String productId, int quantity) {

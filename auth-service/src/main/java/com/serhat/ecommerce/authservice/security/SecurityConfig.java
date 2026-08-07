@@ -1,47 +1,23 @@
 package com.serhat.ecommerce.authservice.security;
 
-import com.serhat.ecommerce.authservice.repository.UserRepository;
+import com.serhat.ecommerce.commons.security.IdentityHeaderFilter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.http.HttpMethod;
-import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.ProviderManager;
-import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
-import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-import org.springframework.security.core.userdetails.*;
+import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
+/**
+ * auth-service issues tokens but does not validate them for its own protected endpoints:
+ * the gateway already does that and forwards the caller's identity as headers, so
+ * validation lives in exactly one place. Requests that reach this service without those
+ * headers stay unauthenticated and are rejected by the rules below.
+ */
 @Configuration
-@EnableMethodSecurity
 public class SecurityConfig {
-    private final UserRepository userRepo;
-    private final JwtUtil jwtUtil;
-
-    public SecurityConfig(UserRepository userRepo, JwtUtil jwtUtil) {
-        this.userRepo = userRepo;
-        this.jwtUtil = jwtUtil;
-    }
-
-    @Bean
-    public UserDetailsService userDetailsService() {
-        return username -> userRepo.findByUsername(username)
-                .map(u -> User.withUsername(u.getUsername())
-                        .password(u.getPassword())
-                        .authorities("USER")
-                        .build())
-                .orElseThrow(() -> new UsernameNotFoundException("User not found"));
-    }
-
-    @Bean
-    public AuthenticationManager authenticationManager(UserDetailsService uds, PasswordEncoder encoder) {
-        DaoAuthenticationProvider provider = new DaoAuthenticationProvider();
-        provider.setUserDetailsService(uds);
-        provider.setPasswordEncoder(encoder);
-        return new ProviderManager(provider);
-    }
 
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -49,22 +25,20 @@ public class SecurityConfig {
     }
 
     @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http, UserDetailsService uds) throws Exception {
-        JwtAuthenticationFilter jwtFilter = new JwtAuthenticationFilter(jwtUtil, uds);
-
+    public SecurityFilterChain filterChain(HttpSecurity http, IdentityHeaderFilter identityHeaderFilter)
+            throws Exception {
         http
-          .csrf(csrf -> csrf.disable())
-          .authorizeHttpRequests(auth -> auth
-                  .requestMatchers("/api/auth/**").permitAll()
-                  .anyRequest().authenticated()
-          )
-          .sessionManagement(session -> session.sessionCreationPolicy(
-                  org.springframework.security.config.http.SessionCreationPolicy.STATELESS))
-          .addFilterBefore(jwtFilter, org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter.class)
-          .httpBasic(basic -> basic.disable())
-          .formLogin(form -> form.disable());
+                .csrf(csrf -> csrf.disable())
+                .authorizeHttpRequests(auth -> auth
+                        .requestMatchers("/api/auth/**").permitAll()
+                        .requestMatchers("/actuator/health/**", "/actuator/info").permitAll()
+                        .anyRequest().authenticated()
+                )
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .addFilterBefore(identityHeaderFilter, UsernamePasswordAuthenticationFilter.class)
+                .httpBasic(basic -> basic.disable())
+                .formLogin(form -> form.disable());
 
         return http.build();
     }
 }
-
