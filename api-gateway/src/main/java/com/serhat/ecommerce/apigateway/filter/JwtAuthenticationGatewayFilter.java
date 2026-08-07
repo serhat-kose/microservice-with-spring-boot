@@ -54,6 +54,8 @@ public class JwtAuthenticationGatewayFilter implements GlobalFilter, Ordered {
     private static final List<String> PUBLIC_GET_PREFIXES = List.of(
             "/api/products",
             "/api/categories",
+            "/api/brands",
+            "/api/sellers",
             "/api/search"
     );
 

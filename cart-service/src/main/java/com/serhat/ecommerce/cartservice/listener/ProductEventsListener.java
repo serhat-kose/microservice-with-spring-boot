@@ -1,18 +1,27 @@
 package com.serhat.ecommerce.cartservice.listener;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.serhat.ecommerce.cartservice.model.Product;
 import com.serhat.ecommerce.cartservice.repository.ProductRepository;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
 
-import java.util.Map;
+import java.math.BigDecimal;
 
 /**
- * Exceptions are intentionally left to propagate: the container-level
- * KafkaErrorHandlingConfig retries with backoff and, on repeated failure,
- * routes the message to a dead-letter topic instead of it being silently dropped.
+ * Maintains the local catalog read-model that the cart prices against.
+ *
+ * <p>Events arrive wrapped in the shared envelope, so the payload is read from
+ * {@code payload} rather than from the message root. Only the handful of fields the cart
+ * actually needs are projected - the cart has no use for descriptions, images or variants,
+ * and copying them would couple it to catalog changes it does not care about.
+ *
+ * <p>Exceptions are left to propagate so the shared Kafka error handler retries and then
+ * dead-letters, instead of a malformed message being silently dropped.
  */
+@Slf4j
 @Component
 public class ProductEventsListener {
 
@@ -35,16 +44,39 @@ public class ProductEventsListener {
 
     @KafkaListener(topics = "product-deleted", groupId = "cart-group")
     public void onProductDeleted(String message) throws Exception {
-        Map<?, ?> m = mapper.readValue(message, Map.class);
-        Object idObj = m.get("productId");
-        Long id = null;
-        if (idObj instanceof Number number) id = number.longValue();
-        else if (idObj instanceof String s) id = Long.valueOf(s);
-        if (id != null) productRepository.deleteById(id);
+        JsonNode payload = payloadOf(message);
+        JsonNode id = payload.get("productId");
+        if (id != null && !id.isNull()) {
+            productRepository.deleteById(id.asLong());
+        }
     }
 
     private void upsert(String message) throws Exception {
-        Product p = mapper.readValue(message, Product.class);
-        productRepository.save(p);
+        JsonNode payload = payloadOf(message);
+
+        Long id = payload.path("id").asLong();
+        if (id == 0) {
+            throw new IllegalArgumentException("Product event carries no id: " + message);
+        }
+
+        // A withdrawn product is dropped from the read-model so it can no longer be added
+        // to a cart, while carts that already contain it fail loudly at checkout.
+        String status = payload.path("status").asText(null);
+        if ("INACTIVE".equals(status)) {
+            productRepository.deleteById(id);
+            return;
+        }
+
+        Product product = new Product(id, payload.path("name").asText(null),
+                new BigDecimal(payload.path("price").asText("0")));
+        productRepository.save(product);
+    }
+
+    private JsonNode payloadOf(String message) throws Exception {
+        JsonNode root = mapper.readTree(message);
+        JsonNode payload = root.get("payload");
+        // Tolerates an unwrapped message so an event published before the envelope was
+        // introduced still applies rather than poisoning the consumer.
+        return payload == null || payload.isNull() ? root : payload;
     }
 }

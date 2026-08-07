@@ -2,7 +2,7 @@ package com.serhat.ecommerce.productservice.exception;
 
 public class ProductNotFoundException extends RuntimeException {
 
-    public ProductNotFoundException(Long id) {
-        super("Product not found with id: " + id);
+    public ProductNotFoundException(Object key) {
+        super("Product not found: " + key);
     }
 }

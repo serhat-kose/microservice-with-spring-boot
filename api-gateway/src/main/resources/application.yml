@@ -34,7 +34,9 @@ spring:
         - id: product-service
           uri: lb://product-service
           predicates:
-            - Path=/api/products/**
+            # Catalog browsing (products, categories, brands, sellers) is all served by
+            # product-service, so one route covers them.
+            - Path=/api/products/**,/api/categories/**,/api/brands/**,/api/sellers/**
           filters:
             - name: CircuitBreaker
               args:
