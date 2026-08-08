@@ -53,3 +53,10 @@ eureka:
     fetch-registry: true
   instance:
     prefer-ip-address: false
+
+ecommerce:
+  stock:
+    # Upper bound on how long a hold can survive without its order completing, after which
+    # the sweeper returns the stock. Guards against a saga stalling and leaking inventory.
+    reservation-ttl-minutes: ${RESERVATION_TTL_MINUTES:30}
+    sweep-interval-ms: ${RESERVATION_SWEEP_INTERVAL_MS:60000}
