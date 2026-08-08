@@ -52,6 +52,7 @@
         <module>product-service</module>
         <module>search-service</module>
         <module>review-service</module>
+        <module>promotion-service</module>
         <module>cart-service</module>
         <module>stock-service</module>
         <module>order-service</module>

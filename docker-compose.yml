@@ -12,6 +12,7 @@ volumes:
   postgres-order-data:
   postgres-notification-data:
   postgres-review-data:
+  postgres-promotion-data:
   postgres-saga-data:
   kafka-data:
   elasticsearch-data:
@@ -226,6 +227,23 @@ services:
       timeout: 5s
       retries: 10
 
+  postgres-promotion:
+    image: *postgres-image
+    container_name: postgres-promotion
+    environment:
+      POSTGRES_DB: promotiondb
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+    volumes:
+      - postgres-promotion-data:/var/lib/postgresql/data
+    networks:
+      - ecommerce-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
   postgres-saga:
     image: *postgres-image
     container_name: postgres-saga
@@ -327,6 +345,28 @@ services:
       EUREKA_SERVER: http://eureka-server:8761/eureka/
     depends_on:
       postgres-review:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+    networks:
+      - ecommerce-net
+
+  promotion-service:
+    build:
+      context: .
+      dockerfile: promotion-service/Dockerfile
+    container_name: promotion-service
+    environment:
+      PROMOTION_SERVICE_PORT: "8093"
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-promotion:5432/promotiondb
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      EUREKA_SERVER: http://eureka-server:8761/eureka/
+    depends_on:
+      postgres-promotion:
         condition: service_healthy
       kafka:
         condition: service_healthy

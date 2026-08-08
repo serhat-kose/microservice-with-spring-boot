@@ -77,6 +77,22 @@ spring:
                 redis-rate-limiter.replenishRate: 50
                 redis-rate-limiter.burstCapacity: 100
                 key-resolver: "#{@clientKeyResolver}"
+        - id: promotion-service
+          uri: lb://promotion-service
+          predicates:
+            - Path=/api/promotions/**
+          filters:
+            - name: CircuitBreaker
+              args:
+                name: promotionServiceCB
+                fallbackUri: forward:/fallback
+            - name: RequestRateLimiter
+              args:
+                # Tighter than most routes: coupon validation is the natural target for
+                # someone brute-forcing codes.
+                redis-rate-limiter.replenishRate: 20
+                redis-rate-limiter.burstCapacity: 40
+                key-resolver: "#{@clientKeyResolver}"
         - id: cart-service
           uri: lb://cart-service
           predicates:
