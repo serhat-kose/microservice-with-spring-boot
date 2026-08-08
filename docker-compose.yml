@@ -13,6 +13,7 @@ volumes:
   postgres-notification-data:
   postgres-saga-data:
   kafka-data:
+  elasticsearch-data:
 
 services:
 
@@ -60,6 +61,34 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+
+  elasticsearch:
+    # Pinned to the same 8.7.x line as the elasticsearch-java client that Spring Boot
+    # 3.1.4 manages, so client and server stay on a supported pairing.
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.7.1
+    container_name: elasticsearch
+    environment:
+      discovery.type: single-node
+      # Security is disabled for local development only; a real deployment must enable
+      # TLS and authentication and set ELASTICSEARCH_URIS to https.
+      xpack.security.enabled: "false"
+      ES_JAVA_OPTS: "-Xms512m -Xmx512m"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - elasticsearch-data:/usr/share/elasticsearch/data
+    ports:
+      - "9200:9200"
+    networks:
+      - ecommerce-net
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fs http://localhost:9200/_cluster/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 40s
 
   eureka-server:
     build:
@@ -240,6 +269,26 @@ services:
       kafka:
         condition: service_healthy
       redis:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+    networks:
+      - ecommerce-net
+
+  search-service:
+    build:
+      context: .
+      dockerfile: search-service/Dockerfile
+    container_name: search-service
+    environment:
+      SEARCH_SERVICE_PORT: "8091"
+      ELASTICSEARCH_URIS: http://elasticsearch:9200
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      EUREKA_SERVER: http://eureka-server:8761/eureka/
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+      kafka:
         condition: service_healthy
       eureka-server:
         condition: service_healthy

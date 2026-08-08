@@ -47,6 +47,22 @@ spring:
                 redis-rate-limiter.replenishRate: 100
                 redis-rate-limiter.burstCapacity: 200
                 key-resolver: "#{@clientKeyResolver}"
+        - id: search-service
+          uri: lb://search-service
+          predicates:
+            - Path=/api/search/**
+          filters:
+            - name: CircuitBreaker
+              args:
+                name: searchServiceCB
+                fallbackUri: forward:/fallback
+            - name: RequestRateLimiter
+              args:
+                # Search is the highest-volume endpoint on a storefront, so it gets the
+                # most generous bucket of any route.
+                redis-rate-limiter.replenishRate: 150
+                redis-rate-limiter.burstCapacity: 300
+                key-resolver: "#{@clientKeyResolver}"
         - id: cart-service
           uri: lb://cart-service
           predicates:

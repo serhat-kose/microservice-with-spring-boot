@@ -2,6 +2,8 @@
 FROM maven:3.9.6-eclipse-temurin-17 AS builder
 WORKDIR /build
 COPY pom.xml .
+COPY ecommerce-commons/pom.xml ecommerce-commons/pom.xml
+COPY ecommerce-commons/src ecommerce-commons/src
 COPY auth-service/pom.xml auth-service/pom.xml
 COPY auth-service/src auth-service/src
 RUN mvn -B -pl auth-service -am package -DskipTests

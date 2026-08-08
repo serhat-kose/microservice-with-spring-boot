@@ -2,6 +2,8 @@
 FROM maven:3.9.6-eclipse-temurin-17 AS builder
 WORKDIR /build
 COPY pom.xml .
+COPY ecommerce-commons/pom.xml ecommerce-commons/pom.xml
+COPY ecommerce-commons/src ecommerce-commons/src
 COPY notification-service/pom.xml notification-service/pom.xml
 COPY notification-service/src notification-service/src
 RUN mvn -B -pl notification-service -am package -DskipTests

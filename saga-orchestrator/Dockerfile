@@ -2,6 +2,8 @@
 FROM maven:3.9.6-eclipse-temurin-17 AS builder
 WORKDIR /build
 COPY pom.xml .
+COPY ecommerce-commons/pom.xml ecommerce-commons/pom.xml
+COPY ecommerce-commons/src ecommerce-commons/src
 COPY saga-orchestrator/pom.xml saga-orchestrator/pom.xml
 COPY saga-orchestrator/src saga-orchestrator/src
 RUN mvn -B -pl saga-orchestrator -am package -DskipTests
