@@ -56,7 +56,10 @@ public class JwtAuthenticationGatewayFilter implements GlobalFilter, Ordered {
             "/api/categories",
             "/api/brands",
             "/api/sellers",
-            "/api/search"
+            "/api/search",
+            // Only /api/reviews/product/** is genuinely public; the service's own rules
+            // reject anonymous access to the rest, so a bare prefix here is safe.
+            "/api/reviews/product"
     );
 
     private final Key signingKey;

@@ -11,6 +11,7 @@ volumes:
   postgres-stock-data:
   postgres-order-data:
   postgres-notification-data:
+  postgres-review-data:
   postgres-saga-data:
   kafka-data:
   elasticsearch-data:
@@ -208,6 +209,23 @@ services:
       timeout: 5s
       retries: 10
 
+  postgres-review:
+    image: *postgres-image
+    container_name: postgres-review
+    environment:
+      POSTGRES_DB: reviewdb
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+    volumes:
+      - postgres-review-data:/var/lib/postgresql/data
+    networks:
+      - ecommerce-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
   postgres-saga:
     image: *postgres-image
     container_name: postgres-saga
@@ -287,6 +305,28 @@ services:
       EUREKA_SERVER: http://eureka-server:8761/eureka/
     depends_on:
       elasticsearch:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+    networks:
+      - ecommerce-net
+
+  review-service:
+    build:
+      context: .
+      dockerfile: review-service/Dockerfile
+    container_name: review-service
+    environment:
+      REVIEW_SERVICE_PORT: "8092"
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-review:5432/reviewdb
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      EUREKA_SERVER: http://eureka-server:8761/eureka/
+    depends_on:
+      postgres-review:
         condition: service_healthy
       kafka:
         condition: service_healthy

@@ -4,7 +4,11 @@ import com.serhat.ecommerce.productservice.entity.Product;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
+import java.math.BigDecimal;
 import java.util.Optional;
 
 /**
@@ -25,4 +29,13 @@ public interface ProductRepository extends JpaRepository<Product, Long>, JpaSpec
     Optional<Product> findWithDetailsById(Long id);
 
     boolean existsBySlug(String slug);
+
+    /**
+     * Writes only the rating columns, deliberately leaving {@code version} untouched.
+     * Loading and saving the entity instead would bump the optimistic-lock version and make
+     * an unrelated, concurrent seller edit fail for no real reason.
+     */
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("UPDATE Product p SET p.averageRating = :average, p.reviewCount = :count WHERE p.id = :id")
+    int updateRating(@Param("id") Long id, @Param("average") BigDecimal average, @Param("count") int count);
 }

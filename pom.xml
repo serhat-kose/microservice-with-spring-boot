@@ -51,6 +51,7 @@
         <module>auth-service</module>
         <module>product-service</module>
         <module>search-service</module>
+        <module>review-service</module>
         <module>cart-service</module>
         <module>stock-service</module>
         <module>order-service</module>
