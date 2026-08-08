@@ -12,6 +12,8 @@ volumes:
   postgres-order-data:
   postgres-notification-data:
   postgres-review-data:
+  postgres-payment-data:
+  postgres-shipment-data:
   postgres-promotion-data:
   postgres-saga-data:
   kafka-data:
@@ -219,6 +221,40 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
     volumes:
       - postgres-review-data:/var/lib/postgresql/data
+    networks:
+      - ecommerce-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  postgres-payment:
+    image: *postgres-image
+    container_name: postgres-payment
+    environment:
+      POSTGRES_DB: paymentdb
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+    volumes:
+      - postgres-payment-data:/var/lib/postgresql/data
+    networks:
+      - ecommerce-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  postgres-shipment:
+    image: *postgres-image
+    container_name: postgres-shipment
+    environment:
+      POSTGRES_DB: shipmentdb
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+    volumes:
+      - postgres-shipment-data:/var/lib/postgresql/data
     networks:
       - ecommerce-net
     healthcheck:
@@ -447,9 +483,16 @@ services:
     container_name: payment-service
     environment:
       PAYMENT_SERVICE_PORT: "8086"
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-payment:5432/paymentdb
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       EUREKA_SERVER: http://eureka-server:8761/eureka/
+      # Raise to exercise the saga's rollback path (stock release + order failure).
+      PAYMENT_DECLINE_RATE: ${PAYMENT_DECLINE_RATE:-0.0}
     depends_on:
+      postgres-payment:
+        condition: service_healthy
       kafka:
         condition: service_healthy
       eureka-server:
@@ -464,9 +507,14 @@ services:
     container_name: shipment-service
     environment:
       SHIPMENT_SERVICE_PORT: "8089"
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-shipment:5432/shipmentdb
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       EUREKA_SERVER: http://eureka-server:8761/eureka/
     depends_on:
+      postgres-shipment:
+        condition: service_healthy
       kafka:
         condition: service_healthy
       eureka-server:

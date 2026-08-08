@@ -149,6 +149,20 @@ spring:
                 redis-rate-limiter.replenishRate: 30
                 redis-rate-limiter.burstCapacity: 60
                 key-resolver: "#{@clientKeyResolver}"
+        - id: shipment-service
+          uri: lb://shipment-service
+          predicates:
+            - Path=/api/shipments/**
+          filters:
+            - name: CircuitBreaker
+              args:
+                name: shipmentServiceCB
+                fallbackUri: forward:/fallback
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 50
+                redis-rate-limiter.burstCapacity: 100
+                key-resolver: "#{@clientKeyResolver}"
         - id: notification-service
           uri: lb://notification-service
           predicates:

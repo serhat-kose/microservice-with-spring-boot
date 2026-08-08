@@ -1,91 +1,90 @@
 package com.serhat.ecommerce.notificationservice.listener;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.serhat.ecommerce.notificationservice.dto.NotificationPayload;
 import com.serhat.ecommerce.notificationservice.dto.OrderItem;
 import com.serhat.ecommerce.notificationservice.service.NotificationService;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
-import java.util.Map;
 
+/**
+ * Turns order-lifecycle events into customer emails.
+ *
+ * <p>Deliberately only reacts to the moments a customer cares about: the order completing,
+ * the order failing, and the parcel being booked. It previously also mailed on
+ * {@code stock-reserved} and {@code payment-result}, so a single successful checkout sent
+ * three emails within seconds for internal saga steps the customer has no use for.
+ */
+@Slf4j
 @Component
+@RequiredArgsConstructor
 public class NotificationListener {
-    private final NotificationService notificationService;
-    private final ObjectMapper mapper = new ObjectMapper();
 
-    public NotificationListener(NotificationService notificationService) {
-        this.notificationService = notificationService;
-    }
+    private final NotificationService notificationService;
+    private final ObjectMapper mapper;
 
     @KafkaListener(topics = "order-completed", groupId = "notification-group")
     public void onOrderCompleted(String message) throws Exception {
-        Map<String, Object> m = mapper.readValue(message, Map.class);
-        String orderId = String.valueOf(m.get("orderId"));
-
-        NotificationPayload payload = new NotificationPayload();
-        payload.setEventType("ORDER_COMPLETED");
-        payload.setOrderId(orderId);
-        payload.setUserId((String) m.get("userId"));
-        // try to extract items if present
-        Object itemsObj = m.get("items");
-        if (itemsObj != null) {
-            List<OrderItem> items = mapper.convertValue(itemsObj, mapper.getTypeFactory().constructCollectionType(List.class, OrderItem.class));
-            payload.setItems(items);
-        }
-        notificationService.sendOrderNotification(payload);
+        JsonNode payload = payloadOf(message);
+        NotificationPayload notification = base(payload, "ORDER_COMPLETED");
+        notification.setItems(items(payload));
+        notificationService.sendOrderNotification(notification);
     }
 
     @KafkaListener(topics = "order-failed", groupId = "notification-group")
     public void onOrderFailed(String message) throws Exception {
-        Map<String, Object> m = mapper.readValue(message, Map.class);
-        String orderId = String.valueOf(m.get("orderId"));
-
-        NotificationPayload payload = new NotificationPayload();
-        payload.setEventType("ORDER_FAILED");
-        payload.setOrderId(orderId);
-        payload.setUserId((String) m.get("userId"));
-        payload.setEmail((String) m.get("email"));
-        notificationService.sendOrderNotification(payload);
+        JsonNode payload = payloadOf(message);
+        NotificationPayload notification = base(payload, "ORDER_FAILED");
+        notification.setReason(text(payload, "reason"));
+        notificationService.sendOrderNotification(notification);
     }
 
-    // Yeni: stok rezervasyonu oluştuğunda kullanıcıya bilgilendirme
-    @KafkaListener(topics = "stock-reserved", groupId = "notification-group")
-    public void onStockReserved(String message) throws Exception {
-        Map<String, Object> m = mapper.readValue(message, Map.class);
-        String orderId = String.valueOf(m.get("orderId"));
-
-        NotificationPayload payload = new NotificationPayload();
-        payload.setEventType("RESERVATION_CREATED");
-        payload.setOrderId(orderId);
-        payload.setUserId((String) m.get("userId"));
-        Object itemsObj = m.get("items");
-        if (itemsObj != null) {
-            List<OrderItem> items = mapper.convertValue(itemsObj, mapper.getTypeFactory().constructCollectionType(List.class, OrderItem.class));
-            payload.setItems(items);
+    /** Tells the customer their parcel is on its way, with the number to track it. */
+    @KafkaListener(topics = "shipment-result", groupId = "notification-group")
+    public void onShipmentResult(String message) throws Exception {
+        JsonNode payload = payloadOf(message);
+        if (!"SCHEDULED".equalsIgnoreCase(text(payload, "status"))) {
+            // A failed shipment is announced by order-failed instead, so the customer is
+            // not told twice about the same problem.
+            return;
         }
-        notificationService.sendOrderNotification(payload);
+        NotificationPayload notification = base(payload, "SHIPMENT_SCHEDULED");
+        notification.setTrackingNumber(text(payload, "trackingNumber"));
+        notification.setCarrier(text(payload, "carrier"));
+        notificationService.sendOrderNotification(notification);
     }
 
-    // Yeni: ödeme sonucu (payment-result) -> başarılıysa mail gönder
-    @KafkaListener(topics = "payment-result", groupId = "notification-group")
-    public void onPaymentResult(String message) throws Exception {
-        Map<String, Object> m = mapper.readValue(message, Map.class);
-        String status = (String) m.get("status");
-        String orderId = String.valueOf(m.get("orderId"));
-        if ("SUCCESS".equalsIgnoreCase(status)) {
-            NotificationPayload payload = new NotificationPayload();
-            payload.setEventType("PAYMENT_COMPLETED");
-            payload.setOrderId(orderId);
-            payload.setUserId((String) m.get("userId"));
-            payload.setEmail((String) m.get("email"));
-            Object itemsObj = m.get("items");
-            if (itemsObj != null) {
-                List<OrderItem> items = mapper.convertValue(itemsObj, mapper.getTypeFactory().constructCollectionType(List.class, OrderItem.class));
-                payload.setItems(items);
-            }
-            notificationService.sendOrderNotification(payload);
+    private NotificationPayload base(JsonNode payload, String eventType) {
+        NotificationPayload notification = new NotificationPayload();
+        notification.setEventType(eventType);
+        notification.setOrderId(text(payload, "orderId"));
+        notification.setUserId(text(payload, "userId"));
+        notification.setEmail(text(payload, "email"));
+        return notification;
+    }
+
+    private List<OrderItem> items(JsonNode payload) {
+        JsonNode items = payload.get("items");
+        if (items == null || !items.isArray()) {
+            return List.of();
         }
+        return mapper.convertValue(items,
+                mapper.getTypeFactory().constructCollectionType(List.class, OrderItem.class));
+    }
+
+    private JsonNode payloadOf(String message) throws Exception {
+        JsonNode root = mapper.readTree(message);
+        JsonNode payload = root.get("payload");
+        return payload == null || payload.isNull() ? root : payload;
+    }
+
+    private String text(JsonNode node, String field) {
+        JsonNode value = node.get(field);
+        return value == null || value.isNull() ? null : value.asText();
     }
 }

@@ -56,7 +56,7 @@ public class NotificationService {
         }
 
         String subject = buildSubject(payload.getEventType(), payload.getOrderId());
-        String body = buildBody(payload.getFirstName(), payload.getLastName(), payload.getOrderId(), payload.getItems());
+        String body = buildBody(payload);
 
         try {
             SimpleMailMessage msg = new SimpleMailMessage();
@@ -102,38 +102,85 @@ public class NotificationService {
     }
 
     private String buildSubject(String eventType, String orderId) {
-        if ("PAYMENT_COMPLETED".equalsIgnoreCase(eventType)) {
-            return "Order " + orderId + " - Payment received";
-        } else if ("RESERVATION_CREATED".equalsIgnoreCase(eventType)) {
-            return "Order " + orderId + " - Reservation created";
-        } else if ("ORDER_FAILED".equalsIgnoreCase(eventType)) {
-            return "Order " + orderId + " - Failed";
-        } else {
-            return "Order " + orderId + " - Update";
-        }
+        return switch (eventType == null ? "" : eventType.toUpperCase()) {
+            case "ORDER_COMPLETED" -> "Order " + orderId + " - Confirmed";
+            case "ORDER_FAILED" -> "Order " + orderId + " - Could not be completed";
+            case "SHIPMENT_SCHEDULED" -> "Order " + orderId + " - On its way";
+            default -> "Order " + orderId + " - Update";
+        };
     }
 
-    private String buildBody(String firstName, String lastName, String orderId, List<OrderItem> items) {
-        String header = String.format("Hello %s %s,%n%nYour order number: %s%n%n",
-                firstName == null ? "" : firstName,
-                lastName == null ? "" : lastName,
-                orderId == null ? "-" : orderId);
+    /**
+     * Body for the notification. Each event type says something specific rather than all of
+     * them sharing one generic "here is your order" text, so an ORDER_FAILED email actually
+     * explains what went wrong and a shipment email carries the tracking number.
+     */
+    private String buildBody(NotificationPayload payload) {
+        StringBuilder body = new StringBuilder();
+        body.append(String.format("Hello %s %s,%n%n",
+                payload.getFirstName() == null ? "" : payload.getFirstName(),
+                payload.getLastName() == null ? "" : payload.getLastName()).trim().replace(" ,", ","));
+        body.append(System.lineSeparator()).append(System.lineSeparator());
 
-        String itemsText = "";
-        if (items != null && !items.isEmpty()) {
-            itemsText = "Items:\n" +
-                    items.stream()
-                            .map(i -> String.format("- %s (x%d) @ %s = %s",
-                                    i.getName() == null ? i.getProductId() : i.getName(),
-                                    i.getQuantity(),
-                                    i.getPrice() == null ? "N/A" : i.getPrice().toString(),
-                                    (i.getPrice() == null ? "N/A" : i.getPrice().multiply(BigDecimal.valueOf(i.getQuantity())).toString())))
-                            .collect(Collectors.joining("\n"))
-                    + "\n\n";
+        String orderId = payload.getOrderId() == null ? "-" : payload.getOrderId();
+        String eventType = payload.getEventType() == null ? "" : payload.getEventType().toUpperCase();
+
+        switch (eventType) {
+            case "ORDER_COMPLETED" -> body.append("Your order ").append(orderId)
+                    .append(" is confirmed and being prepared.").append(System.lineSeparator());
+            case "ORDER_FAILED" -> {
+                body.append("We were unable to complete your order ").append(orderId).append(".")
+                        .append(System.lineSeparator());
+                if (payload.getReason() != null) {
+                    body.append("Reason: ").append(humanReason(payload.getReason()))
+                            .append(System.lineSeparator());
+                }
+                body.append("Any amount reserved has been released back to you.")
+                        .append(System.lineSeparator());
+            }
+            case "SHIPMENT_SCHEDULED" -> {
+                body.append("Your order ").append(orderId).append(" has been handed to the carrier.")
+                        .append(System.lineSeparator());
+                if (payload.getTrackingNumber() != null) {
+                    body.append("Tracking number: ").append(payload.getTrackingNumber())
+                            .append(System.lineSeparator());
+                }
+                if (payload.getCarrier() != null) {
+                    body.append("Carrier: ").append(payload.getCarrier()).append(System.lineSeparator());
+                }
+            }
+            default -> body.append("There is an update on your order ").append(orderId).append(".")
+                    .append(System.lineSeparator());
         }
 
-        String footer = "Thanks,\nThe Ecommerce Team";
+        List<OrderItem> items = payload.getItems();
+        if (items != null && !items.isEmpty()) {
+            body.append(System.lineSeparator()).append("Items:").append(System.lineSeparator());
+            body.append(items.stream()
+                    .map(i -> String.format("- %s (x%d) @ %s = %s",
+                            i.getName() == null ? i.getProductId() : i.getName(),
+                            i.getQuantity(),
+                            i.getPrice() == null ? "N/A" : i.getPrice().toString(),
+                            i.getPrice() == null ? "N/A"
+                                    : i.getPrice().multiply(BigDecimal.valueOf(i.getQuantity())).toString()))
+                    .collect(Collectors.joining(System.lineSeparator())));
+            body.append(System.lineSeparator());
+        }
 
-        return header + itemsText + footer;
+        body.append(System.lineSeparator()).append("Thanks,").append(System.lineSeparator())
+                .append("The Ecommerce Team");
+        return body.toString();
+    }
+
+    /** Turns an internal failure code into something a customer can read. */
+    private String humanReason(String reason) {
+        return switch (reason) {
+            case "insufficient_stock" -> "one or more items sold out before payment completed";
+            case "insufficient_funds" -> "the payment was declined";
+            case "amount_exceeds_limit" -> "the payment exceeded the allowed limit";
+            case "missing_delivery_address" -> "the delivery address was incomplete";
+            case "saga_timed_out" -> "the order could not be processed in time";
+            default -> reason.replace('_', ' ');
+        };
     }
 }

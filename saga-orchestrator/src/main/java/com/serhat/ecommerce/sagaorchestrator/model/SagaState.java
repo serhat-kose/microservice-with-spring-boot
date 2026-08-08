@@ -3,19 +3,27 @@ package com.serhat.ecommerce.sagaorchestrator.model;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
-import lombok.Data;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 import java.time.Instant;
 
 /**
- * Durable record of where a single order's saga currently stands, keyed by orderId.
- * Without this, the orchestrator was a pure in-flight event router with no way to
- * inspect, resume, or detect a stuck saga after a crash.
+ * Durable record of where a single order's saga stands.
+ *
+ * <p>Beyond letting a stalled saga be found, the stored context is what makes compensation
+ * possible at all: when payment fails, the stock to release and the amount to refund have to
+ * come from somewhere, and the failing event does not carry them. Previously the orchestrator
+ * read them off whatever message triggered the failure, which is why the compensation paths
+ * would have thrown a NullPointerException the first time they ran.
  */
 @Entity
-@Table(name = "saga_states")
-@Data
+@Table(name = "saga_states", indexes = {
+        @Index(name = "idx_saga_status_updated", columnList = "status, updatedAt")
+})
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
@@ -25,8 +33,32 @@ public class SagaState {
     @Column(name = "order_id")
     private String orderId;
 
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private String status;
+    private SagaStatus status;
+
+    private String userId;
+
+    /** Order total, kept so a refund can be issued without the shipment event carrying it. */
+    private String amount;
+
+    /** Reserved lines as JSON, kept so stock can be released without the payment event carrying them. */
+    @Lob
+    @Column(columnDefinition = "text")
+    private String items;
+
+    private String lastError;
+
+    @Column(nullable = false)
+    @Builder.Default
+    private int retryCount = 0;
+
+    /**
+     * Two listener threads can process events for the same order concurrently, so the status
+     * write needs a concurrency guard rather than last-write-wins.
+     */
+    @Version
+    private Long version;
 
     @Column(nullable = false)
     private Instant createdAt;
@@ -35,14 +67,14 @@ public class SagaState {
     private Instant updatedAt;
 
     @PrePersist
-    public void prePersist() {
+    void prePersist() {
         Instant now = Instant.now();
-        this.createdAt = now;
-        this.updatedAt = now;
+        createdAt = now;
+        updatedAt = now;
     }
 
     @PreUpdate
-    public void preUpdate() {
-        this.updatedAt = Instant.now();
+    void preUpdate() {
+        updatedAt = Instant.now();
     }
 }

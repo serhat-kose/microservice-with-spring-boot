@@ -45,3 +45,11 @@ eureka:
       defaultZone: ${EUREKA_SERVER:http://eureka-server:8761/eureka/}
     register-with-eureka: true
     fetch-registry: true
+
+ecommerce:
+  saga:
+    # How long a saga may sit in one step before the watchdog compensates and closes it.
+    # Bounds the window in which a dead-lettered command leaves stock held and the customer
+    # uninformed.
+    timeout-minutes: ${SAGA_TIMEOUT_MINUTES:15}
+    watchdog-interval-ms: ${SAGA_WATCHDOG_INTERVAL_MS:60000}

@@ -10,6 +10,20 @@ server:
 spring:
   application:
     name: shipment-service
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/shipmentdb}
+    username: ${SPRING_DATASOURCE_USERNAME:postgres}
+    password: ${SPRING_DATASOURCE_PASSWORD:postgres}
+    hikari:
+      maximum-pool-size: ${DB_POOL_MAX:20}
+      minimum-idle: ${DB_POOL_MIN_IDLE:5}
+      connection-timeout: 3000
+      idle-timeout: 60000
+      max-lifetime: 1800000
+  jpa:
+    hibernate:
+      ddl-auto: update
+    open-in-view: false
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
     producer:
@@ -37,3 +51,7 @@ eureka:
       defaultZone: ${EUREKA_SERVER:http://eureka-server:8761/eureka/}
     register-with-eureka: true
     fetch-registry: true
+
+ecommerce:
+  shipment:
+    estimated-days: ${SHIPMENT_ESTIMATED_DAYS:3}
